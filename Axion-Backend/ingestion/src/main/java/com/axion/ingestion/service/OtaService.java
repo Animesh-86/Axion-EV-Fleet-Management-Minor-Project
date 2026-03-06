@@ -1,17 +1,26 @@
 package com.axion.ingestion.service;
 
 import com.axion.ingestion.model.DigitalTwinState;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.Random;
 
+@Slf4j
 @Service
 public class OtaService {
 
     private final RedisTemplate<String, DigitalTwinState> redisTemplate;
     private final Random random = new Random();
+
+    @Value("${axion.health.soc-critical}")
+    private double socMinForOta;
+
+    @Value("${axion.health.battery-temp-critical}")
+    private double tempMaxForOta;
 
     public OtaService(RedisTemplate<String, DigitalTwinState> redisTemplate) {
         this.redisTemplate = redisTemplate;
@@ -25,24 +34,28 @@ public class OtaService {
             return false;
         }
 
-        // Basic Simulation Logic
-        // In a real scenario, this would check rules, bandwidth, etc.
-        // Here we just simulate a success/fail outcome.
+        // Health-gated OTA: refuse if battery low or temp high
+        if (state.getTelemetry() != null) {
+            Double soc = state.getTelemetry().getBatterySocPct();
+            Double temp = state.getTelemetry().getBatteryTempC();
+            if (soc != null && soc < socMinForOta) {
+                log.warn("OTA refused for vehicle={}: battery too low ({}%)", vehicleId, soc);
+                return false;
+            }
+            if (temp != null && temp > tempMaxForOta) {
+                log.warn("OTA refused for vehicle={}: temperature too high ({}°C)", vehicleId, temp);
+                return false;
+            }
+        }
 
-        boolean success = random.nextBoolean(); // 50/50 chance for demo
-        // Or make it mostly successful:
-        // boolean success = random.nextDouble() > 0.2; // 80% success
+        boolean success = random.nextDouble() > 0.2; // 80% success rate
 
         state.setLastUpdateTimestamp(Instant.now());
-
-        // Update eligibility based on the result (Mock logic)
-        // If success, maybe not eligible for a while?
-        // For now, let's just toggle it or keep it true.
-        state.setOtaEligibility(true);
+        state.setOtaEligibility(!success); // After successful OTA, not immediately eligible again
 
         redisTemplate.opsForValue().set(key, state);
 
-        System.out.println("OTA TRIGGERED for " + vehicleId + " (Campaign: " + campaignId + ") -> Success: " + success);
+        log.info("OTA triggered for vehicle={} campaign={} success={}", vehicleId, campaignId, success);
         return true;
     }
 }

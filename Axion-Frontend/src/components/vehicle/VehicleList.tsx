@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Activity, WifiOff, ExternalLink, Battery, Thermometer, TrendingUp } from 'lucide-react';
 import { AxionApi, FleetVehicle } from '../../services/api';
+import { POLL_VEHICLE_LIST, HEALTH } from '../../config';
 
 interface VehicleListProps {
   onSelectVehicle: (id: string) => void;
@@ -22,6 +23,14 @@ export function VehicleList({ onSelectVehicle }: VehicleListProps) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const getDegradationDrivers = (v: FleetVehicle): Array<{ label: string; trend: 'up' | 'down' }> | undefined => {
+    const drivers: Array<{ label: string; trend: 'up' | 'down' }> = [];
+    if (v.battery != null && v.battery < HEALTH.SOC_WARNING_PCT) drivers.push({ label: v.battery < HEALTH.SOC_CRITICAL_PCT ? 'SOC Critical' : 'Low Battery', trend: 'down' });
+    if (v.temperature != null && v.temperature > HEALTH.TEMP_WARNING_C) drivers.push({ label: v.temperature > HEALTH.TEMP_CRITICAL_C ? 'Temp Critical' : 'High Temp', trend: 'up' });
+    if (!v.online) drivers.push({ label: 'Offline', trend: 'down' });
+    return drivers.length > 0 ? drivers : undefined;
+  };
+
   useEffect(() => {
     const fetchVehicles = async () => {
       try {
@@ -34,7 +43,7 @@ export function VehicleList({ onSelectVehicle }: VehicleListProps) {
           healthScore: v.healthScore || 100,
           status: v.online ? 'online' : 'offline',
           lastUpdate: new Date(v.lastSeen).toLocaleTimeString(),
-          degradationDrivers: v.healthScore < 80 ? [{ label: 'Battery Drain', trend: 'up' }] : undefined
+          degradationDrivers: getDegradationDrivers(v),
         }));
         setVehicles(mapped);
       } catch (err) {
@@ -45,17 +54,17 @@ export function VehicleList({ onSelectVehicle }: VehicleListProps) {
     };
 
     fetchVehicles();
-    const interval = setInterval(fetchVehicles, 3000); // Poll every 3s
+    const interval = setInterval(fetchVehicles, POLL_VEHICLE_LIST);
     return () => clearInterval(interval);
   }, []);
 
   const getHealthStatus = (score: number): { label: string; color: string; glow: string } => {
-    if (score >= 80) return {
+    if (score >= (HEALTH.BASE_SCORE - HEALTH.PENALTY_WARNING)) return {
       label: 'Healthy',
       color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
       glow: 'shadow-emerald-500/20'
     };
-    if (score >= 60) return {
+    if (score >= (HEALTH.BASE_SCORE - HEALTH.PENALTY_CRITICAL)) return {
       label: 'Warning',
       color: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
       glow: 'shadow-amber-500/20'
@@ -68,8 +77,8 @@ export function VehicleList({ onSelectVehicle }: VehicleListProps) {
   };
 
   const getBatteryColor = (battery: number) => {
-    if (battery > 50) return 'bg-emerald-500';
-    if (battery > 20) return 'bg-amber-500';
+    if (battery > HEALTH.SOC_WARNING_PCT) return 'bg-emerald-500';
+    if (battery > HEALTH.SOC_CRITICAL_PCT) return 'bg-amber-500';
     return 'bg-red-500';
   };
 
@@ -233,13 +242,13 @@ export function VehicleList({ onSelectVehicle }: VehicleListProps) {
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-amber-500 rounded-full" />
             <span className="text-muted-foreground">
-              {vehicles.filter(v => v.healthScore >= 60 && v.healthScore < 80).length} Warning
+              {vehicles.filter(v => v.healthScore >= 50 && v.healthScore < 80).length} Warning
             </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
             <span className="text-muted-foreground">
-              {vehicles.filter(v => v.healthScore < 60).length} Critical
+              {vehicles.filter(v => v.healthScore < 50).length} Critical
             </span>
           </div>
         </div>

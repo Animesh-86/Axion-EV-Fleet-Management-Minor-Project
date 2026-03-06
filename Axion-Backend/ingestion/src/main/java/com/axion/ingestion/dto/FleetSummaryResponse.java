@@ -16,4 +16,6 @@ public class FleetSummaryResponse {
     private long healthy;
     private long degraded;
     private long critical;
+    private double eventsPerSecond;
+    private long totalEventsProcessed;
 }

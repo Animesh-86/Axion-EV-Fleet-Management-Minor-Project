@@ -1,12 +1,14 @@
 package com.axion.ota.producer;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
 public class OtaEventProducer {
 
-    private static final String TOPIC = "ota.events";
+    @Value("${axion.kafka.topic.ota-events}")
+    private String topic;
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
@@ -15,6 +17,6 @@ public class OtaEventProducer {
     }
 
     public void publish(String vehicleId, Object event) {
-        kafkaTemplate.send(TOPIC, vehicleId, event);
+        kafkaTemplate.send(topic, vehicleId, event);
     }
 }

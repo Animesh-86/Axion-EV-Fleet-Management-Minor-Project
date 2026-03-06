@@ -1,23 +1,39 @@
 package com.axion.ingestion.health;
 
-public final class HealthRules {
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
-    private HealthRules() {
-    }
+@Component
+public class HealthRules {
 
     // Battery SOC
-    public static final double SOC_CRITICAL = 15.0;
-    public static final double SOC_WARNING = 30.0;
+    @Value("${axion.health.soc-critical}")
+    public double socCritical;
+
+    @Value("${axion.health.soc-warning}")
+    public double socWarning;
 
     // Battery temperature (°C)
-    public static final double BATTERY_TEMP_WARNING = 45.0;
-    public static final double BATTERY_TEMP_CRITICAL = 55.0;
+    @Value("${axion.health.battery-temp-warning}")
+    public double batteryTempWarning;
+
+    @Value("${axion.health.battery-temp-critical}")
+    public double batteryTempCritical;
 
     // Connectivity
-    public static final double PACKET_LOSS_WARNING = 5.0;
-    public static final double PACKET_LOSS_CRITICAL = 10.0;
+    @Value("${axion.health.packet-loss-warning}")
+    public double packetLossWarning;
+
+    @Value("${axion.health.packet-loss-critical}")
+    public double packetLossCritical;
 
     // Scoring penalties
-    public static final int PENALTY_WARNING = 30;
-    public static final int PENALTY_CRITICAL = 60;
+    @Value("${axion.health.penalty-warning}")
+    public int penaltyWarning;
+
+    @Value("${axion.health.penalty-critical}")
+    public int penaltyCritical;
+
+    @Value("${axion.health.base-score}")
+    public int baseScore;
 }

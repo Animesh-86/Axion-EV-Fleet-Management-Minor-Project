@@ -5,6 +5,8 @@ export interface FleetSummary {
   healthy: number;
   degraded: number;
   critical: number;
+  eventsPerSecond: number;
+  totalEventsProcessed: number;
 }
 
 export interface FleetVehicle {

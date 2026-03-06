@@ -33,6 +33,3 @@ class NetworkDropoutScenario(Scenario):
                 state.online = True
                 state.packet_loss_pct = random.uniform(0.1, 1.0)
                 state.signal_strength = random.randint(-85, -65)
-
-
-        print(state.vehicle_id, state.online)

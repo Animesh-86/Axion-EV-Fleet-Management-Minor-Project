@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { AlertTriangle, AlertCircle, Info, TrendingDown, Brain, Filter, Link2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { AlertTriangle, AlertCircle, Info, TrendingDown, Brain, Filter } from 'lucide-react';
 import { motion } from 'motion/react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { StatusBadge } from '../ui/StatusBadge';
+import { AxionApi, FleetVehicle } from '../../services/api';
+import { POLL_ALERTS, HEALTH, TELEMETRY_HISTORY_WINDOW } from '../../config';
 
 interface Alert {
   id: string;
@@ -11,125 +13,144 @@ interface Alert {
   vehicle: string;
   timestamp: string;
   description: string;
-  correlatedVehicles?: string[];
 }
 
-const alerts: Alert[] = [
-  {
-    id: '1',
-    severity: 'critical',
-    title: 'Battery Cell Degradation Detected',
-    vehicle: 'V-2847',
-    timestamp: '2024-12-04 14:23:15',
-    description: 'AI model detected abnormal voltage drop in cell cluster 3B',
-    correlatedVehicles: ['V-2841', 'V-2839'],
-  },
-  {
-    id: '2',
-    severity: 'critical',
-    title: 'Motor Fault - Rear Drive Unit',
-    vehicle: 'V-3241',
-    timestamp: '2024-12-04 13:45:22',
-    description: 'Unusual vibration pattern detected, potential bearing failure',
-  },
-  {
-    id: '3',
-    severity: 'warning',
-    title: 'High Temperature Alert',
-    vehicle: 'V-1923',
-    timestamp: '2024-12-04 13:12:08',
-    description: 'Battery temperature reached 43°C during fast charging',
-    correlatedVehicles: ['V-1921', 'V-1925', 'V-1928'],
-  },
-  {
-    id: '4',
-    severity: 'warning',
-    title: 'Low Battery Warning',
-    vehicle: 'V-4562',
-    timestamp: '2024-12-04 12:56:33',
-    description: 'Battery level dropped below 15% threshold',
-  },
-  {
-    id: '5',
-    severity: 'critical',
-    title: 'Communication Loss',
-    vehicle: 'V-1847',
-    timestamp: '2024-12-04 11:23:47',
-    description: 'Vehicle telemetry connection lost for 15+ minutes',
-  },
-  {
-    id: '6',
-    severity: 'info',
-    title: 'Firmware Update Available',
-    vehicle: 'V-2314',
-    timestamp: '2024-12-04 10:15:29',
-    description: 'New firmware version v2.4.1 ready for deployment',
-  },
-  {
-    id: '7',
-    severity: 'warning',
-    title: 'Tire Pressure Low',
-    vehicle: 'V-5621',
-    timestamp: '2024-12-04 09:34:12',
-    description: 'Front-left tire pressure at 28 PSI (recommended: 42 PSI)',
-  },
-  {
-    id: '8',
-    severity: 'info',
-    title: 'Charging Session Complete',
-    vehicle: 'V-8934',
-    timestamp: '2024-12-04 08:42:55',
-    description: 'Vehicle fully charged to 100% battery',
-  },
-  {
-    id: '9',
-    severity: 'critical',
-    title: 'Battery Cell Degradation Detected',
-    vehicle: 'V-2841',
-    timestamp: '2024-12-04 08:15:42',
-    description: 'AI model detected abnormal voltage drop in cell cluster 3B',
-    correlatedVehicles: ['V-2847', 'V-2839'],
-  },
-];
+function generateAlerts(vehicles: FleetVehicle[]): Alert[] {
+  const alerts: Alert[] = [];
 
-const degradationData = [
-  { day: 'Day 1', capacity: 100 },
-  { day: 'Day 30', capacity: 98.5 },
-  { day: 'Day 60', capacity: 97.2 },
-  { day: 'Day 90', capacity: 96.8 },
-  { day: 'Day 120', capacity: 95.1 },
-  { day: 'Day 150', capacity: 94.2 },
-  { day: 'Day 180', capacity: 93.5 },
-];
+  vehicles.forEach(v => {
+    const ts = v.lastSeen || new Date().toISOString();
 
-const alertTimeline = [
-  { hour: '00:00', critical: 0, warning: 1, info: 2 },
-  { hour: '04:00', critical: 1, warning: 0, info: 1 },
-  { hour: '08:00', critical: 2, warning: 1, info: 3 },
-  { hour: '12:00', critical: 1, warning: 3, info: 2 },
-  { hour: '16:00', critical: 0, warning: 2, info: 1 },
-  { hour: '20:00', critical: 1, warning: 1, info: 0 },
-  { hour: '24:00', critical: 0, warning: 1, info: 1 },
-];
+    if (v.healthState === 'CRITICAL') {
+      alerts.push({
+        id: `${v.vehicleId}-health`,
+        severity: 'critical',
+        title: 'Critical Health Score',
+        vehicle: v.vehicleId,
+        timestamp: ts,
+        description: `Health score dropped to ${v.healthScore}. Immediate inspection recommended.`,
+      });
+    }
 
-const topIssues = [
-  { issue: 'Battery Cell Degradation', occurrences: 12, trend: 'increasing', severity: 'critical' },
-  { issue: 'High Temperature Alerts', occurrences: 8, trend: 'stable', severity: 'warning' },
-  { issue: 'Communication Loss', occurrences: 5, trend: 'decreasing', severity: 'critical' },
-  { issue: 'Motor Vibration', occurrences: 4, trend: 'increasing', severity: 'warning' },
-  { issue: 'Low Battery Warnings', occurrences: 3, trend: 'stable', severity: 'warning' },
-];
+    if (v.battery != null && v.battery < HEALTH.SOC_CRITICAL_PCT) {
+      alerts.push({
+        id: `${v.vehicleId}-soc-crit`,
+        severity: 'critical',
+        title: 'Battery Critically Low',
+        vehicle: v.vehicleId,
+        timestamp: ts,
+        description: `Battery at ${v.battery.toFixed(1)}% — below ${HEALTH.SOC_CRITICAL_PCT}% critical threshold.`,
+      });
+    } else if (v.battery != null && v.battery < HEALTH.SOC_WARNING_PCT) {
+      alerts.push({
+        id: `${v.vehicleId}-soc-warn`,
+        severity: 'warning',
+        title: 'Low Battery Warning',
+        vehicle: v.vehicleId,
+        timestamp: ts,
+        description: `Battery at ${v.battery.toFixed(1)}% — below ${HEALTH.SOC_WARNING_PCT}% warning threshold.`,
+      });
+    }
+
+    if (v.temperature != null && v.temperature > HEALTH.TEMP_CRITICAL_C) {
+      alerts.push({
+        id: `${v.vehicleId}-temp-crit`,
+        severity: 'critical',
+        title: 'Battery Over-Temperature',
+        vehicle: v.vehicleId,
+        timestamp: ts,
+        description: `Temperature at ${v.temperature.toFixed(1)}°C — exceeds ${HEALTH.TEMP_CRITICAL_C}°C critical limit.`,
+      });
+    } else if (v.temperature != null && v.temperature > HEALTH.TEMP_WARNING_C) {
+      alerts.push({
+        id: `${v.vehicleId}-temp-warn`,
+        severity: 'warning',
+        title: 'High Temperature Alert',
+        vehicle: v.vehicleId,
+        timestamp: ts,
+        description: `Temperature at ${v.temperature.toFixed(1)}°C — above ${HEALTH.TEMP_WARNING_C}°C warning threshold.`,
+      });
+    }
+
+    if (!v.online) {
+      alerts.push({
+        id: `${v.vehicleId}-offline`,
+        severity: 'warning',
+        title: 'Vehicle Offline',
+        vehicle: v.vehicleId,
+        timestamp: ts,
+        description: `Telemetry connection lost. Last seen: ${ts}`,
+      });
+    }
+
+    if (v.healthState === 'DEGRADED') {
+      alerts.push({
+        id: `${v.vehicleId}-degraded`,
+        severity: 'info',
+        title: 'Degraded Health',
+        vehicle: v.vehicleId,
+        timestamp: ts,
+        description: `Health score at ${v.healthScore} — vehicle in degraded state. Monitor closely.`,
+      });
+    }
+  });
+
+  const order: Record<string, number> = { critical: 0, warning: 1, info: 2 };
+  alerts.sort((a, b) => order[a.severity] - order[b.severity]);
+  return alerts;
+}
+
+function deriveTopIssues(alerts: Alert[]) {
+  const counts: Record<string, { count: number; severity: string }> = {};
+  alerts.forEach(a => {
+    if (!counts[a.title]) counts[a.title] = { count: 0, severity: a.severity };
+    counts[a.title].count++;
+  });
+  return Object.entries(counts)
+    .map(([issue, { count, severity }]) => ({ issue, occurrences: count, severity }))
+    .sort((a, b) => b.occurrences - a.occurrences)
+    .slice(0, 5);
+}
 
 export function AlertsAnalytics() {
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'warning' | 'info'>('all');
+  const [alertHistory, setAlertHistory] = useState<{ time: string; critical: number; warning: number; info: number }[]>([]);
+  const historyRef = useRef([] as typeof alertHistory);
 
-  const filteredAlerts = severityFilter === 'all' 
-    ? alerts 
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      try {
+        const vehicles = await AxionApi.getFleetVehicles();
+        const generated = generateAlerts(vehicles);
+        setAlerts(generated);
+
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const entry = {
+          time: now,
+          critical: generated.filter(a => a.severity === 'critical').length,
+          warning: generated.filter(a => a.severity === 'warning').length,
+          info: generated.filter(a => a.severity === 'info').length,
+        };
+        const prev = historyRef.current;
+        const updated = [...prev, entry].slice(-TELEMETRY_HISTORY_WINDOW);
+        historyRef.current = updated;
+        setAlertHistory(updated);
+      } catch { /* backend offline */ }
+    };
+    fetchAlerts();
+    const id = setInterval(fetchAlerts, POLL_ALERTS);
+    return () => clearInterval(id);
+  }, []);
+
+  const filteredAlerts = severityFilter === 'all'
+    ? alerts
     : alerts.filter(a => a.severity === severityFilter);
 
   const criticalCount = alerts.filter(a => a.severity === 'critical').length;
   const warningCount = alerts.filter(a => a.severity === 'warning').length;
   const infoCount = alerts.filter(a => a.severity === 'info').length;
+  const topIssues = deriveTopIssues(alerts);
 
   const getIcon = (severity: string) => {
     switch (severity) {
@@ -203,39 +224,29 @@ export function AlertsAnalytics() {
             <span className="text-sm text-gray-400">AI Predictions</span>
             <Brain className="w-4 h-4 text-purple-400" />
           </div>
-          <div className="text-3xl mb-1">12</div>
-          <div className="text-sm text-purple-400">Active forecasts</div>
+          <div className="text-3xl mb-1">{alerts.length}</div>
+          <div className="text-sm text-purple-400">Total active alerts</div>
         </motion.div>
       </div>
 
-      {/* Alert Timeline Visualization */}
+      {/* Alert Timeline — live trend */}
       <div className="mb-8 rounded-xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 p-6">
-        <h2 className="text-lg mb-4">Alert Timeline (24h)</h2>
-        <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={alertTimeline}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis 
-              dataKey="hour" 
-              stroke="rgba(255,255,255,0.3)"
-              style={{ fontSize: '11px' }}
-            />
-            <YAxis 
-              stroke="rgba(255,255,255,0.3)"
-              style={{ fontSize: '11px' }}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'rgba(0,0,0,0.9)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                fontSize: '12px',
-              }}
-            />
-            <Line type="monotone" dataKey="critical" stroke="#ef4444" strokeWidth={2} />
-            <Line type="monotone" dataKey="warning" stroke="#eab308" strokeWidth={2} />
-            <Line type="monotone" dataKey="info" stroke="#3b82f6" strokeWidth={2} />
-          </LineChart>
-        </ResponsiveContainer>
+        <h2 className="text-lg mb-4">Alert Trend (live)</h2>
+        {alertHistory.length > 1 ? (
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={alertHistory}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="time" stroke="rgba(255,255,255,0.3)" style={{ fontSize: '11px' }} />
+              <YAxis stroke="rgba(255,255,255,0.3)" style={{ fontSize: '11px' }} allowDecimals={false} />
+              <Tooltip contentStyle={{ backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px' }} />
+              <Area type="monotone" dataKey="critical" stackId="1" stroke="#ef4444" fill="#ef444433" />
+              <Area type="monotone" dataKey="warning" stackId="1" stroke="#eab308" fill="#eab30833" />
+              <Area type="monotone" dataKey="info" stackId="1" stroke="#3b82f6" fill="#3b82f633" />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-[200px] flex items-center justify-center text-gray-500 text-sm">Collecting alert trend data...</div>
+        )}
       </div>
 
       {/* Main Content Grid */}
@@ -300,24 +311,7 @@ export function AlertsAnalytics() {
                             <span>•</span>
                             <span>{alert.timestamp}</span>
                           </div>
-                          <p className="text-sm text-gray-400 mb-2">{alert.description}</p>
-                          
-                          {/* Vehicle Correlation */}
-                          {alert.correlatedVehicles && alert.correlatedVehicles.length > 0 && (
-                            <div className="mt-3 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Link2 className="w-3 h-3 text-purple-400" />
-                                <span className="text-xs text-purple-400">Correlated Vehicles</span>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {alert.correlatedVehicles.map((vehicleId) => (
-                                  <span key={vehicleId} className="text-xs px-2 py-1 rounded bg-purple-500/20 text-purple-300">
-                                    {vehicleId}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+                          <p className="text-sm text-gray-400">{alert.description}</p>
                         </div>
                       </div>
                     </motion.div>
@@ -328,116 +322,98 @@ export function AlertsAnalytics() {
           </div>
         </div>
 
-        {/* Right Column - AI Insights */}
+        {/* Right Column - Insights */}
         <div className="col-span-5 space-y-6">
-          {/* Battery Degradation Prediction */}
+          {/* Alert Summary Breakdown */}
           <div className="rounded-xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 p-6">
             <div className="flex items-center gap-2 mb-4">
               <Brain className="w-5 h-5 text-purple-400" />
-              <h3 className="text-lg">Battery Degradation Prediction</h3>
+              <h3 className="text-lg">Alert Breakdown</h3>
             </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={degradationData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis 
-                  dataKey="day" 
-                  stroke="rgba(255,255,255,0.3)"
-                  style={{ fontSize: '11px' }}
-                />
-                <YAxis 
-                  stroke="rgba(255,255,255,0.3)"
-                  style={{ fontSize: '11px' }}
-                  domain={[90, 100]}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'rgba(0,0,0,0.9)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                  }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="capacity" 
-                  stroke="#a78bfa" 
-                  strokeWidth={3}
-                  dot={{ fill: '#a78bfa', r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-            <div className="mt-4 p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+            <div className="space-y-4">
+              {[
+                { label: 'Critical', count: criticalCount, color: 'bg-red-500', textColor: 'text-red-400' },
+                { label: 'Warning', count: warningCount, color: 'bg-yellow-500', textColor: 'text-yellow-400' },
+                { label: 'Info', count: infoCount, color: 'bg-blue-500', textColor: 'text-blue-400' },
+              ].map(row => (
+                <div key={row.label}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm text-gray-400">{row.label}</span>
+                    <span className={`text-sm font-semibold ${row.textColor}`}>{row.count}</span>
+                  </div>
+                  <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${row.color}`}
+                      style={{ width: alerts.length > 0 ? `${(row.count / alerts.length) * 100}%` : '0%' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
               <div className="flex items-start gap-2">
                 <TrendingDown className="w-4 h-4 text-purple-400 mt-0.5" />
-                <div>
-                  <div className="text-sm text-purple-400 mb-1">AI Insight</div>
-                  <div className="text-xs text-gray-400">
-                    Fleet battery capacity degrading at 0.12% per month. Within normal parameters.
-                    Predicted 90% capacity retention at 3.5 years.
-                  </div>
+                <div className="text-xs text-gray-400">
+                  Alerts are derived in real time from fleet telemetry using thresholds:
+                  SOC &lt; {HEALTH.SOC_CRITICAL_PCT}% (critical), Temp &gt; {HEALTH.TEMP_CRITICAL_C}°C (critical),
+                  SOC &lt; {HEALTH.SOC_WARNING_PCT}% (warning), Temp &gt; {HEALTH.TEMP_WARNING_C}°C (warning).
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Top Recurring Issues */}
+          {/* Top Issues — derived from live alerts */}
           <div className="rounded-xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 p-6">
-            <h3 className="text-lg mb-4">Top Recurring Issues</h3>
-            <div className="space-y-3">
-              {topIssues.map((issue, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className={`p-4 rounded-lg border ${
-                    issue.severity === 'critical' 
-                      ? 'bg-red-500/10 border-red-500/20' 
-                      : 'bg-yellow-500/10 border-yellow-500/20'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm">{issue.issue}</span>
-                    <StatusBadge
-                      status={issue.severity === 'critical' ? 'critical' : 'warning'}
-                      label={issue.trend}
-                      size="sm"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-400">{issue.occurrences} occurrences</span>
-                    <span className={`${
-                      issue.trend === 'increasing' ? 'text-red-400' :
-                      issue.trend === 'decreasing' ? 'text-green-400' :
-                      'text-gray-400'
-                    }`}>
-                      {issue.trend === 'increasing' ? '↑' : issue.trend === 'decreasing' ? '↓' : '→'}
-                    </span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+            <h3 className="text-lg mb-4">Top Issues</h3>
+            {topIssues.length > 0 ? (
+              <div className="space-y-3">
+                {topIssues.map((issue, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={`p-4 rounded-lg border ${
+                      issue.severity === 'critical'
+                        ? 'bg-red-500/10 border-red-500/20'
+                        : issue.severity === 'warning'
+                        ? 'bg-yellow-500/10 border-yellow-500/20'
+                        : 'bg-blue-500/10 border-blue-500/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm">{issue.issue}</span>
+                      <StatusBadge
+                        status={issue.severity === 'critical' ? 'critical' : issue.severity === 'warning' ? 'warning' : 'info'}
+                        label={issue.severity}
+                        size="sm"
+                      />
+                    </div>
+                    <div className="text-xs text-gray-400">{issue.occurrences} vehicle{issue.occurrences !== 1 ? 's' : ''} affected</div>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500 text-center py-6">No active issues — fleet healthy</div>
+            )}
           </div>
 
-          {/* AI Insight Box */}
+          {/* Threshold Reference */}
           <div className="rounded-xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 p-6">
             <div className="flex items-center gap-2 mb-4">
               <Brain className="w-5 h-5 text-cyan-400" />
-              <h3 className="text-lg text-cyan-400">AI Analysis</h3>
+              <h3 className="text-lg text-cyan-400">Health Rules</h3>
             </div>
-            <div className="space-y-3 text-sm text-gray-300">
-              <p>
-                <strong className="text-white">Pattern Detected:</strong> Battery degradation alerts 
-                clustering in vehicles from batch #2847-2850, manufactured Q2 2023.
-              </p>
-              <p>
-                <strong className="text-white">Recommendation:</strong> Schedule preventive maintenance 
-                for 15 vehicles in this batch within 14 days.
-              </p>
-              <p className="text-xs text-gray-500">
-                Confidence: 94% • Model: XGBoost Ensemble v3.2
-              </p>
+            <div className="space-y-2 text-sm text-gray-300">
+              <div className="flex justify-between"><span>Base Health Score</span><span className="font-mono">{HEALTH.BASE_SCORE}</span></div>
+              <div className="flex justify-between"><span>SOC Critical</span><span className="font-mono text-red-400">&lt; {HEALTH.SOC_CRITICAL_PCT}%</span></div>
+              <div className="flex justify-between"><span>SOC Warning</span><span className="font-mono text-yellow-400">&lt; {HEALTH.SOC_WARNING_PCT}%</span></div>
+              <div className="flex justify-between"><span>Temp Warning</span><span className="font-mono text-yellow-400">&gt; {HEALTH.TEMP_WARNING_C}°C</span></div>
+              <div className="flex justify-between"><span>Temp Critical</span><span className="font-mono text-red-400">&gt; {HEALTH.TEMP_CRITICAL_C}°C</span></div>
+              <div className="flex justify-between"><span>Penalty (Warning)</span><span className="font-mono">-{HEALTH.PENALTY_WARNING}</span></div>
+              <div className="flex justify-between"><span>Penalty (Critical)</span><span className="font-mono">-{HEALTH.PENALTY_CRITICAL}</span></div>
             </div>
+            <p className="mt-3 text-xs text-gray-500">
+              Thresholds are configured in backend application.properties and mirrored here for display.
+            </p>
           </div>
         </div>
       </div>

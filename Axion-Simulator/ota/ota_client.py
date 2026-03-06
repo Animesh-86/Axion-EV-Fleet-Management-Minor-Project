@@ -6,9 +6,11 @@ from ota.ota_state import OTAState
 
 
 class OTAClient:
-    def __init__(self, failure_rate: float = 0.2):
+    def __init__(self, failure_rate: float = 0.2, download_delay=(1, 3), apply_delay=(1, 2)):
         self.state = OTAState.IDLE
         self.failure_rate = failure_rate
+        self.download_delay = download_delay
+        self.apply_delay = apply_delay
 
     async def start_update(self):
         if self.state != OTAState.IDLE:
@@ -16,11 +18,11 @@ class OTAClient:
 
         self.state = OTAState.DOWNLOADING
         print(f"[OTA] DOWNLOADING")
-        await asyncio.sleep(random.uniform(1, 3))
+        await asyncio.sleep(random.uniform(*self.download_delay))
 
         self.state = OTAState.APPLYING
         print(f"[OTA] APPLYING")
-        await asyncio.sleep(random.uniform(1, 2))
+        await asyncio.sleep(random.uniform(*self.apply_delay))
 
         if random.random() < self.failure_rate:
             self.state = OTAState.FAILED

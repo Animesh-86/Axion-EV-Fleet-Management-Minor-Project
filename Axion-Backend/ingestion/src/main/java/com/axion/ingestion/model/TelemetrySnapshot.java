@@ -1,10 +1,10 @@
 package com.axion.ingestion.model;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@RequiredArgsConstructor
+@NoArgsConstructor
 @Getter
 @Setter
 public class TelemetrySnapshot {
@@ -14,5 +14,5 @@ public class TelemetrySnapshot {
     private Double batteryTempC;
     private Double motorTempC;
     private Double ambientTempC;
-    private double odometerkm;
+    private Double odometerKm;
 }

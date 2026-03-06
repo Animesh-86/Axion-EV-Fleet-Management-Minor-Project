@@ -18,9 +18,9 @@ public class RestTelemetryAdapter implements TelemetryAdapter {
 
             CanonicalTelemetryEnvelope envelope = new CanonicalTelemetryEnvelope();
             envelope.setSchemaVersion("1.0");
-            envelope.setVehicleId(root.get("vehicle_id").asText());
+            envelope.setVehicleId(root.path("vehicle_id").asText(null));
             envelope.setVendor(root.path("vendor").asText("UNKNOWN"));
-            envelope.setTimestamp(Instant.parse(root.get("timestamp").asText()));
+            envelope.setTimestamp(Instant.parse(root.path("timestamp").asText()));
             envelope.setIngestionTs(Instant.now());
 
             JsonNode telemetryNode = root.path("telemetry");

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Car, Wifi, WifiOff, Heart, TrendingUp, AlertTriangle, Battery, Thermometer } from 'lucide-react';
+import { Car, Wifi, WifiOff, Heart, TrendingUp, AlertTriangle, Battery, Thermometer, Activity } from 'lucide-react';
 import {
   PieChart,
   Pie,
@@ -9,12 +9,13 @@ import {
   Tooltip,
 } from 'recharts';
 import { AxionApi, FleetSummary, FleetVehicle } from '../../services/api';
+import { POLL_DASHBOARD, COUNTER_ANIMATION_DURATION } from '../../config';
 
 function AnimatedCounter({ value, suffix = '' }: { value: number; suffix?: string }) {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    const duration = 2000;
+    const duration = COUNTER_ANIMATION_DURATION;
     const steps = 60;
     const increment = value / steps;
     let current = 0;
@@ -58,7 +59,7 @@ export function FleetDashboard() {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 3000);
+    const interval = setInterval(fetchData, POLL_DASHBOARD);
     return () => clearInterval(interval);
   }, []);
 
@@ -129,6 +130,17 @@ export function FleetDashboard() {
       iconColor: 'text-red-400',
       borderColor: 'border-red-500/20',
     },
+    {
+      title: 'Events / sec',
+      value: Math.round(summary?.eventsPerSecond || 0),
+      suffix: '/s',
+      icon: Activity,
+      trend: `${((summary?.totalEventsProcessed || 0) / 1000).toFixed(0)}k total`,
+      color: 'from-amber-500/20 to-amber-500/5',
+      iconBg: 'bg-amber-500/10',
+      iconColor: 'text-amber-400',
+      borderColor: 'border-amber-500/20',
+    },
   ];
 
   return (
@@ -140,7 +152,7 @@ export function FleetDashboard() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {kpiCards.map((card, index) => {
           const Icon = card.icon;
           return (

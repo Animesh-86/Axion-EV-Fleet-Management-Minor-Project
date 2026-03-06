@@ -28,26 +28,34 @@ class Vehicle:
 
     async def run(self):
         while True:
-            now = datetime.utcnow()
+            try:
+                now = datetime.utcnow()
 
-            if self.state.last_timestamp is None:
-                delta = 0.0
-            else:
-                delta = (now - self.state.last_timestamp).total_seconds()
+                if self.state.last_timestamp is None:
+                    delta = 0.0
+                else:
+                    delta = (now - self.state.last_timestamp).total_seconds()
 
-            self.state.last_timestamp = now
+                self.state.last_timestamp = now
 
-            # Apply scenarios
-            for scenario in self.scenarios:
-                scenario.apply(self.state, delta)
+                # Apply scenarios
+                for scenario in self.scenarios:
+                    scenario.apply(self.state, delta)
 
-            # Block emission if offline
-            if not self.state.online:
-                await asyncio.sleep(self.tick_seconds)
-                continue
+                # Update odometer based on current speed
+                if delta > 0 and self.state.speed_kmph > 0:
+                    km_driven = (self.state.speed_kmph / 3600.0) * delta
+                    self.state.odometer_km += km_driven
 
-            # Emit telemetry
-            await self.emitter.emit(self.state)
+                # Block emission if offline
+                if not self.state.online:
+                    await asyncio.sleep(self.tick_seconds)
+                    continue
+
+                # Emit telemetry
+                await self.emitter.emit(self.state)
+            except Exception as e:
+                print(f"[ERROR] {self.state.vehicle_id}: {e}")
 
             await asyncio.sleep(self.tick_seconds)
 

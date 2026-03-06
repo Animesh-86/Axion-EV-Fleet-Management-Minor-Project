@@ -5,10 +5,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/telemetry")
 @Tag(name = "Telemetry Ingestion", description = "Vehicle telemetry ingestion APIs")
@@ -30,7 +32,7 @@ public class TelemetryIngestionController {
         @PostMapping
         public Mono<ResponseEntity<Void>> ingest(
                         @RequestBody String payload) {
-                System.out.println("RECEIVED TELEMETRY REST REQUEST: " + payload);
+                log.debug("Received telemetry REST request for payload size: {} bytes", payload.length());
 
                 return ingestionService.ingestRest(payload)
                                 .thenReturn(ResponseEntity.accepted().build());

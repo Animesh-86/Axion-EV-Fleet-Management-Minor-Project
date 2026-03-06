@@ -13,9 +13,11 @@ public class TelemetryIngestionService {
     private final RestTelemetryAdapter adapter = new RestTelemetryAdapter();
     private final TelemetryValidator validator = new TelemetryValidator();
     private final TelemetryKafkaProducer producer;
+    private final ThroughputTracker throughputTracker;
 
-    public TelemetryIngestionService(TelemetryKafkaProducer producer) {
+    public TelemetryIngestionService(TelemetryKafkaProducer producer, ThroughputTracker throughputTracker) {
         this.producer = producer;
+        this.throughputTracker = throughputTracker;
     }
 
     public Mono<Void> ingestRest(String rawPayload) {
@@ -23,6 +25,7 @@ public class TelemetryIngestionService {
             CanonicalTelemetryEnvelope envelope = adapter.adapt(rawPayload);
             validator.validate(envelope);
             producer.publish(envelope);
+            throughputTracker.recordEvent();
             return true;
         }).then();
     }

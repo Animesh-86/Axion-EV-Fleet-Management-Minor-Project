@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Battery, Thermometer, Gauge, Clock, Activity, WifiOff, Circle, Zap, Info, Shield, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Battery, Thermometer, Gauge, Clock, Activity, WifiOff, Circle, Zap, Info, Shield, CheckCircle, Upload } from 'lucide-react';
 import { AxionApi, VehicleDetail as ApiVehicleDetail } from '../../services/api';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import { toast } from 'sonner';
+import { POLL_VEHICLE_DETAIL, TELEMETRY_HISTORY_WINDOW, DEFAULT_CAMPAIGN_ID, HEALTH } from '../../config';
 
 interface VehicleDetailProps {
   vehicleId: string | null;
@@ -21,6 +24,7 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
   const [isOnline, setIsOnline] = useState(true);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'outdated'>('synced');
   const [activeTab, setActiveTab] = useState<'live' | 'timeline' | 'policies' | 'ota'>('live');
+  const [telemetryHistory, setTelemetryHistory] = useState<any[]>([]);
 
   useEffect(() => {
     if (!vehicleId) return;
@@ -32,6 +36,25 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
         setVehicle(data);
         setIsOnline(data.online);
         setSyncStatus('synced');
+
+        if (data.telemetry) {
+          setTelemetryHistory(prev => {
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            // Skip only if ALL values are null/undefined (not just falsy — 0 is valid)
+            if (data.telemetry.speedKmph == null && data.telemetry.batterySocPct == null && data.telemetry.batteryTempC == null) {
+              return prev;
+            }
+
+            const newPoint = {
+              time: timeStr,
+              speed: data.telemetry.speedKmph ?? prev[prev.length - 1]?.speed ?? 0,
+              battery: data.telemetry.batterySocPct ?? prev[prev.length - 1]?.battery ?? 0,
+              temp: data.telemetry.batteryTempC ?? prev[prev.length - 1]?.temp ?? 0,
+            };
+            return [...prev, newPoint].slice(-TELEMETRY_HISTORY_WINDOW);
+          });
+        }
       } catch (e) {
         console.error("Failed to fetch vehicle detail", e);
         setSyncStatus('outdated');
@@ -39,7 +62,7 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
     };
 
     fetchVehicle();
-    const interval = setInterval(fetchVehicle, 3000);
+    const interval = setInterval(fetchVehicle, POLL_VEHICLE_DETAIL);
     return () => clearInterval(interval);
   }, [vehicleId]);
 
@@ -140,6 +163,21 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
     { timestamp: new Date().toISOString(), type: 'temperature', event: 'Temp Update', newValue: `${snapshot.batteryTempC?.toFixed(1)}°C` }
   ] : [];
 
+  const handleTriggerOta = async () => {
+    try {
+      if (vehicleId) {
+        await AxionApi.triggerOTA(DEFAULT_CAMPAIGN_ID, vehicleId);
+        toast.success('OTA Update Triggered', {
+          description: `Simulated OTA update initiated for ${vehicleId}`,
+        });
+      }
+    } catch (e) {
+      toast.error('OTA Trigger Failed', {
+        description: 'Could not reach backend or vehicle not found.',
+      });
+    }
+  };
+
   return (
     <div className="p-8">
       {/* ... keeping the rest ... */}
@@ -199,30 +237,79 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
             className="bg-card border border-border rounded-lg p-6 space-y-6"
           >
             {/* Vehicle Silhouette */}
-            <div className="relative h-64 flex items-center justify-center bg-gradient-to-br from-primary/5 to-secondary/5 rounded-lg border border-primary/10">
+            <div className="relative h-64 flex items-center justify-center bg-gradient-to-br from-primary/5 to-secondary/5 rounded-lg border border-primary/10 overflow-hidden">
+              {/* Background gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#00E5FF]/5 to-[#6C63FF]/5" />
+
               <motion.div
                 animate={{
-                  boxShadow: isOnline
-                    ? '0 0 40px rgba(0, 229, 255, 0.3)'
-                    : '0 0 20px rgba(156, 163, 175, 0.2)',
+                  opacity: isOnline ? 1 : 0.3,
+                  filter: isOnline ? 'none' : 'grayscale(100%)',
                 }}
-                transition={{ duration: 2, repeat: Infinity, repeatType: 'reverse' }}
+                transition={{ duration: 0.5 }}
                 className="relative"
               >
-                {/* Simplified car icon */}
-                <svg
-                  width="200"
-                  height="120"
-                  viewBox="0 0 200 120"
-                  fill="none"
-                  className="text-primary/40"
-                >
-                  <rect x="40" y="50" width="120" height="40" rx="8" stroke="currentColor" strokeWidth="3" />
-                  <rect x="50" y="35" width="100" height="30" rx="6" stroke="currentColor" strokeWidth="3" />
-                  <circle cx="65" cy="95" r="12" stroke="currentColor" strokeWidth="3" fill="currentColor" />
-                  <circle cx="135" cy="95" r="12" stroke="currentColor" strokeWidth="3" fill="currentColor" />
-                  <line x1="90" y1="35" x2="90" y2="50" stroke="currentColor" strokeWidth="3" />
+                {/* Modern EV SVG */}
+                <svg width="300" height="180" viewBox="0 0 300 180" fill="none">
+                  <defs>
+                    <linearGradient id="dtCarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor={isOnline ? '#00E5FF' : '#4B5563'} stopOpacity="0.8" />
+                      <stop offset="100%" stopColor={isOnline ? '#6C63FF' : '#374151'} stopOpacity="0.8" />
+                    </linearGradient>
+                    <filter id="dtGlow">
+                      <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                      <feMerge>
+                        <feMergeNode in="coloredBlur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  <path
+                    d="M 50 120 L 70 100 L 100 90 L 130 85 L 170 85 L 200 90 L 230 100 L 250 120 L 250 140 L 230 145 L 70 145 L 50 140 Z"
+                    fill="url(#dtCarGradient)"
+                    filter="url(#dtGlow)"
+                    opacity="0.9"
+                  />
+                  <path d="M 120 85 L 140 70 L 160 70 L 180 85 Z" fill={isOnline ? '#00E5FF' : '#4B5563'} opacity="0.3" />
+                  <circle cx="90" cy="145" r="18" fill="#121821" stroke={isOnline ? '#00E5FF' : '#4B5563'} strokeWidth="3" />
+                  <circle cx="210" cy="145" r="18" fill="#121821" stroke={isOnline ? '#6C63FF' : '#4B5563'} strokeWidth="3" />
+                  <circle cx="240" cy="110" r="6" fill={isOnline ? '#00FF85' : '#4B5563'}>
+                    {isOnline && <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite" />}
+                  </circle>
                 </svg>
+
+                {/* Floating speed badge */}
+                {isOnline && (
+                  <motion.div
+                    className="absolute -top-2 left-1/2 -translate-x-1/2"
+                    animate={{ y: [-5, 5, -5] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <div className="px-3 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(0, 229, 255, 0.2)', color: '#00E5FF' }}>
+                      {vehicle?.telemetry?.speedKmph?.toFixed(0) || 0} km/h
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Energy particles */}
+                {isOnline && (
+                  <div className="absolute inset-0 pointer-events-none">
+                    {[...Array(8)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="absolute w-1 h-1 rounded-full"
+                        style={{
+                          background: i % 2 === 0 ? '#00E5FF' : '#6C63FF',
+                          left: `${15 + (i * 70) % 85}%`,
+                          top: `${20 + (i * 50) % 60}%`,
+                          boxShadow: `0 0 8px ${i % 2 === 0 ? '#00E5FF' : '#6C63FF'}`,
+                        }}
+                        animate={{ y: [-15, 15, -15], opacity: [0.2, 1, 0.2], scale: [0.5, 1.5, 0.5] }}
+                        transition={{ duration: 3 + (i % 3), repeat: Infinity, delay: i * 0.3 }}
+                      />
+                    ))}
+                  </div>
+                )}
               </motion.div>
 
               {/* Status overlay */}
@@ -235,59 +322,63 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
             <div className="grid grid-cols-2 gap-4">
               <motion.div
                 whileHover={{ scale: 1.02 }}
-                className="bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20 rounded-lg p-4"
+                className="rounded-lg p-4 border"
+                style={{ backgroundColor: '#0B0F14', borderColor: isOnline ? 'rgba(0, 229, 255, 0.3)' : '#2a3542' }}
               >
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-cyan-500/20 p-2 rounded-lg">
-                    <Gauge className="w-5 h-5 text-cyan-400" />
-                  </div>
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Speed</span>
-                </div>
-                <p className="text-3xl font-bold text-cyan-400">0</p>
+                <Gauge className="w-5 h-5 mb-2" style={{ color: '#00E5FF' }} />
+                <div className="text-xs text-gray-400 mb-1">Speed</div>
+                <motion.div className="text-xl font-bold text-white" key={vehicle?.telemetry?.speedKmph} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                  {vehicle?.telemetry?.speedKmph?.toFixed(0) || 0}
+                </motion.div>
                 <p className="text-xs text-muted-foreground mt-1">km/h</p>
               </motion.div>
 
               <motion.div
                 whileHover={{ scale: 1.02 }}
-                className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 rounded-lg p-4"
+                className="rounded-lg p-4 border"
+                style={{
+                  backgroundColor: '#0B0F14',
+                  borderColor: isOnline
+                    ? (vehicle?.battery ?? 100) > 60 ? 'rgba(0, 255, 133, 0.3)' : (vehicle?.battery ?? 100) > 30 ? 'rgba(255, 184, 0, 0.3)' : 'rgba(255, 61, 113, 0.3)'
+                    : '#2a3542',
+                }}
               >
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-emerald-500/20 p-2 rounded-lg">
-                    <Battery className="w-5 h-5 text-emerald-400" />
-                  </div>
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Battery</span>
-                </div>
-                <p className="text-3xl font-bold text-emerald-400">{vehicle?.battery?.toFixed(0) || 0}</p>
+                <Battery className="w-5 h-5 mb-2" style={{ color: (vehicle?.battery ?? 100) > 60 ? '#00FF85' : (vehicle?.battery ?? 100) > 30 ? '#FFB800' : '#FF3D71' }} />
+                <div className="text-xs text-gray-400 mb-1">Battery</div>
+                <motion.div className="text-xl font-bold text-white" key={vehicle?.battery} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                  {vehicle?.battery?.toFixed(0) || 0}
+                </motion.div>
                 <p className="text-xs text-muted-foreground mt-1">%</p>
               </motion.div>
 
               <motion.div
                 whileHover={{ scale: 1.02 }}
-                className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border border-amber-500/20 rounded-lg p-4"
+                className="rounded-lg p-4 border"
+                style={{
+                  backgroundColor: '#0B0F14',
+                  borderColor: isOnline
+                    ? (vehicle?.temperature ?? 0) > 50 ? 'rgba(255, 61, 113, 0.3)' : 'rgba(255, 184, 0, 0.3)'
+                    : '#2a3542',
+                }}
               >
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-amber-500/20 p-2 rounded-lg">
-                    <Thermometer className="w-5 h-5 text-amber-400" />
-                  </div>
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Temperature</span>
-                </div>
-                <p className="text-3xl font-bold text-amber-400">{vehicle?.temperature?.toFixed(1) || 0}</p>
+                <Thermometer className="w-5 h-5 mb-2" style={{ color: (vehicle?.temperature ?? 0) > 50 ? '#FF3D71' : '#FFB800' }} />
+                <div className="text-xs text-gray-400 mb-1">Temperature</div>
+                <motion.div className="text-xl font-bold text-white" key={vehicle?.temperature} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                  {vehicle?.temperature?.toFixed(1) || 0}
+                </motion.div>
                 <p className="text-xs text-muted-foreground mt-1">°C</p>
               </motion.div>
 
               <motion.div
                 whileHover={{ scale: 1.02 }}
-                className="bg-gradient-to-br from-violet-500/10 to-violet-500/5 border border-violet-500/20 rounded-lg p-4"
+                className="rounded-lg p-4 border"
+                style={{ backgroundColor: '#0B0F14', borderColor: isOnline ? 'rgba(108, 99, 255, 0.3)' : '#2a3542' }}
               >
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-violet-500/20 p-2 rounded-lg">
-                    <Clock className="w-5 h-5 text-violet-400" />
-                  </div>
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Last Update</span>
-                </div>
-                <p className="text-sm font-semibold text-violet-400">
+                <Clock className="w-5 h-5 mb-2" style={{ color: '#6C63FF' }} />
+                <div className="text-xs text-gray-400 mb-1">Last Update</div>
+                <motion.div className="text-sm font-bold text-white">
                   {vehicle?.lastSeen ? new Date(vehicle.lastSeen).toLocaleTimeString() : '--:--'}
-                </p>
+                </motion.div>
                 <p className="text-xs text-muted-foreground mt-1">Live</p>
               </motion.div>
             </div>
@@ -363,8 +454,10 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
                 Quick Actions
               </h3>
               <div className="grid grid-cols-2 gap-3">
-                <button className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg text-sm font-semibold hover:bg-primary/20 transition-all">
-                  Send Command
+                <button
+                  onClick={handleTriggerOta}
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg text-sm font-semibold hover:bg-primary/20 transition-all">
+                  <Upload className="w-4 h-4" /> Trigger OTA
                 </button>
                 <button className="px-4 py-2 bg-secondary/10 text-secondary border border-secondary/20 rounded-lg text-sm font-semibold hover:bg-secondary/20 transition-all">
                   View History
@@ -438,7 +531,65 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
                       <p className="text-2xl font-bold text-primary">{vehicle?.healthScore || 0}</p>
                     </div>
                   </div>
-                  {/* ... rest of live state ... */}
+
+                  {/* Realtime Telemetry Charts */}
+                  <div className="space-y-4 pt-4">
+                    <h3 className="font-semibold px-1">Live Telemetry Trends</h3>
+
+                    <div className="grid grid-cols-1 gap-4">
+                      {/* Battery Chart */}
+                      <div className="h-[200px] w-full p-4 bg-background/50 border border-border/50 rounded-lg">
+                        <p className="text-xs text-muted-foreground mb-4">Battery SOC (%)</p>
+                        <ResponsiveContainer width="100%" height={120}>
+                          <LineChart data={telemetryHistory}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                            <XAxis dataKey="time" stroke="#666" fontSize={10} tickMargin={10} />
+                            <YAxis domain={[0, 100]} stroke="#666" fontSize={10} width={30} />
+                            <RechartsTooltip
+                              contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', fontSize: '12px' }}
+                              itemStyle={{ color: '#34d399' }}
+                            />
+                            <Line type="monotone" dataKey="battery" stroke="#34d399" strokeWidth={2} dot={false} isAnimationActive={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* Temperature & Speed Dual Chart */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="h-[200px] w-full p-4 bg-background/50 border border-border/50 rounded-lg">
+                          <p className="text-xs text-muted-foreground mb-4">Temperature (°C)</p>
+                          <ResponsiveContainer width="100%" height={120}>
+                            <LineChart data={telemetryHistory}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                              <XAxis dataKey="time" stroke="#666" fontSize={10} tickMargin={10} />
+                              <YAxis domain={['auto', 'auto']} stroke="#666" fontSize={10} width={30} />
+                              <RechartsTooltip
+                                contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', fontSize: '12px' }}
+                                itemStyle={{ color: '#fbbf24' }}
+                              />
+                              <Line type="monotone" dataKey="temp" stroke="#fbbf24" strokeWidth={2} dot={false} isAnimationActive={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+
+                        <div className="h-[200px] w-full p-4 bg-background/50 border border-border/50 rounded-lg">
+                          <p className="text-xs text-muted-foreground mb-4">Speed (km/h)</p>
+                          <ResponsiveContainer width="100%" height={120}>
+                            <LineChart data={telemetryHistory}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                              <XAxis dataKey="time" stroke="#666" fontSize={10} tickMargin={10} />
+                              <YAxis domain={[0, 'auto']} stroke="#666" fontSize={10} width={30} />
+                              <RechartsTooltip
+                                contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', fontSize: '12px' }}
+                                itemStyle={{ color: '#22d3ee' }}
+                              />
+                              <Line type="monotone" dataKey="speed" stroke="#22d3ee" strokeWidth={2} dot={false} isAnimationActive={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </motion.div>
               )}
 
@@ -475,8 +626,81 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
                 </motion.div>
               )}
               {/* Policies and OTA tabs omitted for brevity but should be kept if needed or mocked */}
-              {activeTab === 'policies' && <p className="text-muted-foreground p-4 text-center">No active policies configured.</p>}
-              {activeTab === 'ota' && <p className="text-muted-foreground p-4 text-center">Vehicle is up to date.</p>}
+              {activeTab === 'policies' && (
+                <motion.div
+                  key="policies"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="space-y-3"
+                >
+                  <h3 className="font-semibold mb-4">Active Policy Rules</h3>
+                  {[
+                    { rule: `Battery SOC < ${HEALTH.SOC_CRITICAL_PCT}%`, action: `Mark CRITICAL, -${HEALTH.PENALTY_CRITICAL} health`, active: (vehicle?.battery ?? 100) < HEALTH.SOC_CRITICAL_PCT },
+                    { rule: `Battery SOC < ${HEALTH.SOC_WARNING_PCT}%`, action: `Mark DEGRADED, -${HEALTH.PENALTY_WARNING} health`, active: (vehicle?.battery ?? 100) < HEALTH.SOC_WARNING_PCT && (vehicle?.battery ?? 100) >= HEALTH.SOC_CRITICAL_PCT },
+                    { rule: `Battery Temp > ${HEALTH.TEMP_CRITICAL_C}°C`, action: `Mark CRITICAL, -${HEALTH.PENALTY_CRITICAL} health`, active: (vehicle?.temperature ?? 0) > HEALTH.TEMP_CRITICAL_C },
+                    { rule: `Battery Temp > ${HEALTH.TEMP_WARNING_C}°C`, action: `Mark DEGRADED, -${HEALTH.PENALTY_WARNING} health`, active: (vehicle?.temperature ?? 0) > HEALTH.TEMP_WARNING_C && (vehicle?.temperature ?? 0) <= HEALTH.TEMP_CRITICAL_C },
+                    { rule: 'Vehicle Offline', action: `Mark CRITICAL, -${HEALTH.PENALTY_CRITICAL} health`, active: !isOnline },
+                  ].map((policy, i) => (
+                    <div key={i} className={`flex items-center justify-between p-4 rounded-lg border ${
+                      policy.active
+                        ? 'bg-red-500/5 border-red-500/30'
+                        : 'bg-background/50 border-border/50'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2 h-2 rounded-full ${policy.active ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
+                        <span className="text-sm font-medium">{policy.rule}</span>
+                      </div>
+                      <span className={`text-xs font-semibold ${policy.active ? 'text-red-400' : 'text-muted-foreground'}`}>
+                        {policy.active ? 'TRIGGERED' : 'Passing'} — {policy.action}
+                      </span>
+                    </div>
+                  ))}
+                </motion.div>
+              )}
+              {activeTab === 'ota' && (
+                <motion.div
+                  key="ota"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="space-y-4"
+                >
+                  <h3 className="font-semibold mb-4">OTA Eligibility Check</h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    {[
+                      { check: `Battery SOC > ${HEALTH.SOC_WARNING_PCT}%`, pass: (vehicle?.battery ?? 0) > HEALTH.SOC_WARNING_PCT },
+                      { check: 'Vehicle Online', pass: isOnline },
+                      { check: `Battery Temp < ${HEALTH.TEMP_CRITICAL_C}°C`, pass: (vehicle?.temperature ?? 100) < HEALTH.TEMP_CRITICAL_C },
+                      { check: 'Health State not CRITICAL', pass: vehicle?.healthState !== 'CRITICAL' },
+                    ].map((item, i) => (
+                      <div key={i} className={`flex items-center justify-between p-3 rounded-lg border ${
+                        item.pass ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'
+                      }`}>
+                        <span className="text-sm">{item.check}</span>
+                        <span className={`text-xs font-bold ${item.pass ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {item.pass ? 'PASS' : 'FAIL'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className={`p-4 rounded-lg border text-center ${
+                    (vehicle?.battery ?? 0) > HEALTH.SOC_WARNING_PCT && isOnline && (vehicle?.temperature ?? 100) < HEALTH.TEMP_CRITICAL_C && vehicle?.healthState !== 'CRITICAL'
+                      ? 'bg-emerald-500/10 border-emerald-500/30'
+                      : 'bg-red-500/10 border-red-500/30'
+                  }`}>
+                    <p className={`text-sm font-bold ${
+                      (vehicle?.battery ?? 0) > HEALTH.SOC_WARNING_PCT && isOnline && (vehicle?.temperature ?? 100) < HEALTH.TEMP_CRITICAL_C && vehicle?.healthState !== 'CRITICAL'
+                        ? 'text-emerald-400'
+                        : 'text-red-400'
+                    }`}>
+                      {(vehicle?.battery ?? 0) > HEALTH.SOC_WARNING_PCT && isOnline && (vehicle?.temperature ?? 100) < HEALTH.TEMP_CRITICAL_C && vehicle?.healthState !== 'CRITICAL'
+                        ? 'ELIGIBLE — Vehicle can receive OTA updates'
+                        : 'NOT ELIGIBLE — One or more checks failed'}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
             </AnimatePresence>
           </div>
         </motion.div>

@@ -1,5 +1,7 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { POLL_HEALTH_CHECK } from '../config';
+import { useAuth } from '../services/auth';
 import {
   LayoutDashboard,
   Car,
@@ -10,20 +12,45 @@ import {
   ChevronLeft,
   Search,
   ChevronDown,
-  Circle
+  Circle,
+  AlertTriangle,
+  Server,
+  LogOut
 } from 'lucide-react';
+import { AxionApi } from '../services/api';
 
-type Page = 'dashboard' | 'fleet' | 'vehicles' | 'digital-twin' | 'ota' | 'analytics' | 'settings';
+type Page = 'dashboard' | 'fleet' | 'vehicles' | 'digital-twin' | 'ota' | 'analytics' | 'alerts' | 'system' | 'settings';
 
 interface LayoutProps {
   children: ReactNode;
   currentPage: Page;
   onNavigate: (page: Page) => void;
+  onSearch?: (query: string) => void;
 }
 
-export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
+export function Layout({ children, currentPage, onNavigate, onSearch }: LayoutProps) {
+  const { user, logout } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedFleet] = useState('Global Fleet');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [backendLive, setBackendLive] = useState(false);
+  const [fleetCount, setFleetCount] = useState({ total: 0, online: 0 });
+
+  useEffect(() => {
+    const checkBackend = async () => {
+      try {
+        const summary = await AxionApi.getFleetSummary();
+        setBackendLive(true);
+        setFleetCount({ total: summary.totalVehicles, online: summary.onlineVehicles });
+      } catch {
+        setBackendLive(false);
+        // Preserve last known fleet count instead of resetting to 0
+      }
+    };
+    checkBackend();
+    const interval = setInterval(checkBackend, POLL_HEALTH_CHECK);
+    return () => clearInterval(interval);
+  }, []);
 
   const navItems = [
     { id: 'dashboard' as Page, label: 'Dashboard', icon: LayoutDashboard },
@@ -31,6 +58,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     { id: 'digital-twin' as Page, label: 'Digital Twin', icon: Layers },
     { id: 'ota' as Page, label: 'OTA Campaigns', icon: Upload },
     { id: 'analytics' as Page, label: 'Analytics', icon: BarChart3 },
+    { id: 'alerts' as Page, label: 'Alerts', icon: AlertTriangle },
+    { id: 'system' as Page, label: 'System Health', icon: Server },
     { id: 'settings' as Page, label: 'Settings', icon: Settings },
   ];
 
@@ -102,9 +131,34 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         </button>
 
         {/* Footer */}
-        {!sidebarCollapsed && (
+        {!sidebarCollapsed ? (
           <div className="p-4 border-t border-sidebar-border">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-bold text-primary">{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
+                </div>
+                <span className="text-sm text-foreground truncate">{user?.name || 'User'}</span>
+              </div>
+              <button
+                onClick={logout}
+                className="text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
             <p className="text-xs text-muted-foreground">Version 2.4.1</p>
+          </div>
+        ) : (
+          <div className="p-2 border-t border-sidebar-border flex justify-center">
+            <button
+              onClick={logout}
+              className="text-muted-foreground hover:text-red-400 transition-colors p-2"
+              title="Sign out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         )}
       </motion.aside>
@@ -125,22 +179,59 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
           {/* Center: Search */}
           <div className="flex-1 max-w-md mx-8">
-            <div className="relative">
+            <form
+              className="relative"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (searchQuery.trim() && onSearch) {
+                  onSearch(searchQuery.trim());
+                  setSearchQuery('');
+                }
+              }}
+            >
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search vehicle ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
               />
-            </div>
+            </form>
           </div>
 
-          {/* Right: System Status */}
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-            <Circle className="w-2 h-2 fill-emerald-500 text-emerald-500 animate-pulse" />
-            <span className="text-xs font-semibold text-emerald-500 uppercase tracking-wide">
-              LIVE
-            </span>
+          {/* Right: User + System Status */}
+          <div className="flex items-center gap-4">
+            {user && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-foreground font-medium">{user.name}</span>
+                {user.company && (
+                  <span className="text-muted-foreground text-xs">• {user.company}</span>
+                )}
+              </div>
+            )}
+            {fleetCount.total > 0 && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Car className="w-3.5 h-3.5" />
+                <span>{fleetCount.online}/{fleetCount.total} online</span>
+              </div>
+            )}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${
+              backendLive
+                ? 'bg-emerald-500/10 border-emerald-500/20'
+                : 'bg-red-500/10 border-red-500/20'
+            }`}>
+              <Circle className={`w-2 h-2 ${
+                backendLive
+                  ? 'fill-emerald-500 text-emerald-500 animate-pulse'
+                  : 'fill-red-500 text-red-500'
+              }`} />
+              <span className={`text-xs font-semibold uppercase tracking-wide ${
+                backendLive ? 'text-emerald-500' : 'text-red-500'
+              }`}>
+                {backendLive ? 'LIVE' : 'OFFLINE'}
+              </span>
+            </div>
           </div>
         </header>
 

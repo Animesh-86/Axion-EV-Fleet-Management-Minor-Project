@@ -3,6 +3,7 @@ package com.axion.ingestion.api;
 import com.axion.ingestion.dto.FleetSummaryResponse;
 import com.axion.ingestion.dto.FleetVehicleResponse;
 import com.axion.ingestion.model.DigitalTwinState;
+import com.axion.ingestion.service.ThroughputTracker;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,9 +16,11 @@ import java.util.Set;
 public class FleetController {
 
     private final RedisTemplate<String, DigitalTwinState> redisTemplate;
+    private final ThroughputTracker throughputTracker;
 
-    public FleetController(RedisTemplate<String, DigitalTwinState> redisTemplate) {
+    public FleetController(RedisTemplate<String, DigitalTwinState> redisTemplate, ThroughputTracker throughputTracker) {
         this.redisTemplate = redisTemplate;
+        this.throughputTracker = throughputTracker;
     }
 
     @GetMapping("/summary")
@@ -46,6 +49,9 @@ public class FleetController {
                 case "CRITICAL" -> summary.setCritical(summary.getCritical() + 1);
             }
         }
+
+        summary.setEventsPerSecond(throughputTracker.getEventsPerSecond());
+        summary.setTotalEventsProcessed(throughputTracker.getTotalEvents());
 
         return summary;
     }
