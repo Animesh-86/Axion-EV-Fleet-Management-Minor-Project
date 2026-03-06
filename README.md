@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Design/1.png" alt="Axion Dashboard" width="100%"/>
+  <img src="Design/Dashboard.png" alt="Axion Dashboard" width="100%"/>
 </p>
 
 <h1 align="center">⚡ Axion — EV Fleet Management Platform</h1>
@@ -132,27 +132,42 @@ The system tolerates unreliable connectivity, heterogeneous vendor data formats,
 
 <details>
 <summary><b>Fleet Dashboard</b> — Real-time monitoring with KPI cards & health distribution</summary>
-<img src="Design/1.png" width="100%"/>
+<img src="Design/Dashboard.png" width="100%"/>
 </details>
 
 <details>
 <summary><b>Vehicle List</b> — All vehicles with battery, temperature & health scores</summary>
-<img src="Design/2.png" width="100%"/>
+<img src="Design/Vehicles.png" width="100%"/>
 </details>
 
 <details>
 <summary><b>Digital Twin</b> — Battery, thermal, motion & operational states</summary>
-<img src="Design/3.png" width="100%"/>
+<img src="Design/Digital Twin.png" width="100%"/>
 </details>
 
 <details>
 <summary><b>OTA Campaign Manager</b> — Canary phases, rollout progress & rollback</summary>
-<img src="Design/4.png" width="100%"/>
+<img src="Design/OTA.png" width="100%"/>
 </details>
 
 <details>
 <summary><b>Analytics & Health Scoring</b> — Degradation trends & anomaly detection</summary>
-<img src="Design/5.png" width="100%"/>
+<img src="Design/Analytics.png" width="100%"/>
+</details>
+
+<details>
+<summary><b>Alerts</b> — Real-time alert feed with severity indicators</summary>
+<img src="Design/Alerts.png" width="100%"/>
+</details>
+
+<details>
+<summary><b>System Health</b> — Infrastructure monitoring & service status</summary>
+<img src="Design/System Health.png" width="100%"/>
+</details>
+
+<details>
+<summary><b>Settings</b> — Connection config, polling intervals & health scoring rules</summary>
+<img src="Design/Settings.png" width="100%"/>
 </details>
 
 ---

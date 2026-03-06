@@ -148,7 +148,7 @@ export function Layout({ children, currentPage, onNavigate, onSearch }: LayoutPr
                 <LogOut className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-xs text-muted-foreground">Version 2.4.1</p>
+            <p className="text-xs text-muted-foreground">Version 1.2.0</p>
           </div>
         ) : (
           <div className="p-2 border-t border-sidebar-border flex justify-center">
@@ -216,19 +216,16 @@ export function Layout({ children, currentPage, onNavigate, onSearch }: LayoutPr
                 <span>{fleetCount.online}/{fleetCount.total} online</span>
               </div>
             )}
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${
-              backendLive
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${backendLive
                 ? 'bg-emerald-500/10 border-emerald-500/20'
                 : 'bg-red-500/10 border-red-500/20'
-            }`}>
-              <Circle className={`w-2 h-2 ${
-                backendLive
+              }`}>
+              <Circle className={`w-2 h-2 ${backendLive
                   ? 'fill-emerald-500 text-emerald-500 animate-pulse'
                   : 'fill-red-500 text-red-500'
-              }`} />
-              <span className={`text-xs font-semibold uppercase tracking-wide ${
-                backendLive ? 'text-emerald-500' : 'text-red-500'
-              }`}>
+                }`} />
+              <span className={`text-xs font-semibold uppercase tracking-wide ${backendLive ? 'text-emerald-500' : 'text-red-500'
+                }`}>
                 {backendLive ? 'LIVE' : 'OFFLINE'}
               </span>
             </div>

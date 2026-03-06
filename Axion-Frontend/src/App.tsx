@@ -124,7 +124,7 @@ function AuthenticatedApp() {
               <div className="rounded-xl bg-gradient-to-br from-primary/5 to-primary/[0.02] border border-primary/20 p-6">
                 <h2 className="text-lg font-medium mb-4 text-primary">About Axion</h2>
                 <div className="space-y-2 text-sm text-muted-foreground">
-                  <p><strong className="text-foreground">Version:</strong> 2.4.1</p>
+                  <p><strong className="text-foreground">Version:</strong> 1.2.0</p>
                   <p><strong className="text-foreground">Stack:</strong> React 18 + Spring Boot 3.2 + Kafka + Redis</p>
                   <p><strong className="text-foreground">Architecture:</strong> Event-driven Digital Twin pipeline</p>
                   <p><strong className="text-foreground">Protocols:</strong> REST + MQTT dual ingestion</p>
