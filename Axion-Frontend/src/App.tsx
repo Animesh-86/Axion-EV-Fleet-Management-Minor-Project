@@ -11,13 +11,20 @@ import { SystemHealth } from './components/system/SystemHealth';
 import { AuthProvider, useAuth } from './services/auth';
 import { LoginPage } from './components/auth/LoginPage';
 import { SignupPage } from './components/auth/SignupPage';
+import { LandingPage } from './app/pages/LandingPage';
+import { ArchitecturePage } from './app/pages/ArchitecturePage';
 import { PORTS, HEALTH, POLL_DASHBOARD, POLL_SYSTEM_HEALTH, TELEMETRY_HISTORY_WINDOW } from './config';
 
-type Page = 'dashboard' | 'fleet' | 'vehicles' | 'digital-twin' | 'ota' | 'analytics' | 'alerts' | 'system' | 'settings';
-type AuthPage = 'login' | 'signup';
+type Page = 'dashboard' | 'fleet' | 'vehicles' | 'digital-twin' | 'ota' | 'analytics' | 'alerts' | 'system' | 'settings' | 'landing' | 'architecture';
+type AuthPage = 'login' | 'signup' | 'landing' | 'architecture';
 
-function AuthenticatedApp() {
-  const [currentPage, setCurrentPage] = useState<Page>('dashboard');
+interface AuthenticatedAppProps {
+  onBackToLanding: () => void;
+  initialPage?: Page;
+}
+
+function AuthenticatedApp({ onBackToLanding, initialPage = 'dashboard' }: AuthenticatedAppProps) {
+  const [currentPage, setCurrentPage] = useState<Page>(initialPage);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
 
   const renderPage = () => {
@@ -134,6 +141,11 @@ function AuthenticatedApp() {
             </div>
           </div>
         );
+      case 'landing':
+      case 'architecture':
+        // These are handled at the top level, but if they somehow get here, 
+        // we'll just show the dashboard or could redirect back.
+        return <FleetDashboard />;
       default:
         return <FleetDashboard />;
     }
@@ -143,12 +155,13 @@ function AuthenticatedApp() {
     <>
       <Toaster theme="dark" position="top-right" richColors closeButton />
       <Layout
-        currentPage={currentPage}
-        onNavigate={setCurrentPage}
+        currentPage={currentPage as any}
+        onNavigate={setCurrentPage as any}
         onSearch={(query) => {
           setSelectedVehicleId(query);
           setCurrentPage('digital-twin');
         }}
+        onBackToLanding={onBackToLanding}
       >
         {renderPage()}
       </Layout>
@@ -158,15 +171,74 @@ function AuthenticatedApp() {
 
 export default function App() {
   const { user } = useAuth();
-  const [authPage, setAuthPage] = useState<AuthPage>('login');
+  const [view, setView] = useState<AuthPage | Page>('landing');
 
+  // Handle "Get Started" logic based on auth status
+  const handleGetStarted = () => {
+    if (user) {
+      setView('dashboard');
+    } else {
+      setView('signup');
+    }
+  };
+
+  // If user is not logged in, we only allow auth-related views + landing
   if (!user) {
-    return authPage === 'login'
-      ? <LoginPage onSwitchToSignup={() => setAuthPage('signup')} />
-      : <SignupPage onSwitchToLogin={() => setAuthPage('login')} />;
+    switch (view) {
+      case 'landing':
+        return (
+          <LandingPage 
+            onGetStarted={handleGetStarted} 
+            onViewArchitecture={() => setView('architecture')} 
+          />
+        );
+      case 'architecture':
+        return <ArchitecturePage onBack={() => setView('landing')} />;
+      case 'login':
+        return (
+          <LoginPage 
+            onSwitchToSignup={() => setView('signup')} 
+            onBackToLanding={() => setView('landing')}
+          />
+        );
+      case 'signup':
+        return (
+          <SignupPage 
+            onSwitchToLogin={() => setView('login')} 
+            onBackToLanding={() => setView('landing')}
+          />
+        );
+      default:
+        return (
+          <LandingPage 
+            onGetStarted={handleGetStarted} 
+            onViewArchitecture={() => setView('architecture')} 
+          />
+        );
+    }
   }
 
-  return <AuthenticatedApp />;
+  // If user is logged in
+  if (view === 'landing') {
+    return (
+      <LandingPage 
+        onGetStarted={handleGetStarted} 
+        onViewArchitecture={() => setView('architecture')} 
+      />
+    );
+  }
+
+  if (view === 'architecture') {
+    return <ArchitecturePage onBack={() => setView('landing')} />;
+  }
+
+  // Otherwise show the authenticated app
+  return (
+    <AuthenticatedApp 
+      onBackToLanding={() => setView('landing')} 
+      initialPage={view as Page} 
+    />
+  );
 }
 
 export function AppWithAuth() {
