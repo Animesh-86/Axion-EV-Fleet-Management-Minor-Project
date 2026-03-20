@@ -19,16 +19,17 @@ import {
 } from 'lucide-react';
 import { AxionApi } from '../services/api';
 
-type Page = 'dashboard' | 'fleet' | 'vehicles' | 'digital-twin' | 'ota' | 'analytics' | 'alerts' | 'system' | 'settings';
+type PageType = 'dashboard' | 'fleet' | 'vehicles' | 'digital-twin' | 'ota' | 'analytics' | 'alerts' | 'system' | 'settings';
 
 interface LayoutProps {
   children: ReactNode;
-  currentPage: Page;
-  onNavigate: (page: Page) => void;
+  currentPage: PageType;
+  onNavigate: (page: PageType) => void;
   onSearch?: (query: string) => void;
+  onBackToLanding: () => void;
 }
 
-export function Layout({ children, currentPage, onNavigate, onSearch }: LayoutProps) {
+export function Layout({ children, currentPage, onNavigate, onSearch, onBackToLanding }: LayoutProps) {
   const { user, logout } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedFleet] = useState('Global Fleet');
@@ -53,14 +54,14 @@ export function Layout({ children, currentPage, onNavigate, onSearch }: LayoutPr
   }, []);
 
   const navItems = [
-    { id: 'dashboard' as Page, label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'vehicles' as Page, label: 'Vehicles', icon: Car },
-    { id: 'digital-twin' as Page, label: 'Digital Twin', icon: Layers },
-    { id: 'ota' as Page, label: 'OTA Campaigns', icon: Upload },
-    { id: 'analytics' as Page, label: 'Analytics', icon: BarChart3 },
-    { id: 'alerts' as Page, label: 'Alerts', icon: AlertTriangle },
-    { id: 'system' as Page, label: 'System Health', icon: Server },
-    { id: 'settings' as Page, label: 'Settings', icon: Settings },
+    { id: 'dashboard' as PageType, label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'vehicles' as PageType, label: 'Vehicles', icon: Car },
+    { id: 'digital-twin' as PageType, label: 'Digital Twin', icon: Layers },
+    { id: 'ota' as PageType, label: 'OTA Campaigns', icon: Upload },
+    { id: 'analytics' as PageType, label: 'Analytics', icon: BarChart3 },
+    { id: 'alerts' as PageType, label: 'Alerts', icon: AlertTriangle },
+    { id: 'system' as PageType, label: 'System Health', icon: Server },
+    { id: 'settings' as PageType, label: 'Settings', icon: Settings },
   ];
 
   return (
@@ -73,7 +74,7 @@ export function Layout({ children, currentPage, onNavigate, onSearch }: LayoutPr
         className="bg-sidebar border-r border-sidebar-border flex flex-col relative"
       >
         {/* Logo */}
-        <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
+        <div className="h-16 flex items-center px-6 border-b border-sidebar-border justify-between">
           {!sidebarCollapsed ? (
             <div>
               <h1 className="text-lg font-bold text-primary tracking-tight">AXION</h1>
@@ -84,6 +85,13 @@ export function Layout({ children, currentPage, onNavigate, onSearch }: LayoutPr
           ) : (
             <div className="text-primary text-xl font-bold">A</div>
           )}
+          <button 
+            onClick={onBackToLanding}
+            className="p-1.5 rounded-md hover:bg-sidebar-accent text-muted-foreground transition-colors"
+            title="Back to Landing Page"
+          >
+            <Circle className="w-4 h-4 fill-primary/20 text-primary" />
+          </button>
         </div>
 
         {/* Navigation */}
