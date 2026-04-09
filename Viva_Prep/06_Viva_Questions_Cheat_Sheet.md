@@ -1,62 +1,102 @@
 # 06 — Viva Questions Cheat Sheet
 
-Be prepared! Examiners love to test if you've actually written the code or just followed a tutorial. Here are the most likely questions and how to answer them like a pro.
+This section is meant to help you answer questions in a natural, confident way. The best strategy in a viva is to give a direct answer first, then add one or two technical reasons.
 
 ---
 
-## 🏗 General & Architecture
+## General Architecture
 
 **Q: What is the most unique feature of your project?**
-*   **A**: It's the **Digital Twin** approach. We don't just store vehicle data; we maintain a real-time, event-driven virtual model that calculates health scores "on the fly" using an asynchronous pipeline (Kafka + Redis).
 
-**Q: Why did you choose an Event-Driven Architecture (EDA) instead of a simple REST API?**
-*   **A**: Scalability and Loose Coupling. If our health service gets slow, it won't crash the ingestion service because Kafka acts as a buffer. In a real fleet of 10,000+ cars, a simple REST API would crumble under the constant pressure.
+**A:** The digital twin layer. Instead of treating vehicles as plain database rows, Axion maintains a live virtual state for each vehicle that updates as telemetry arrives. That makes the system more operationally useful because the operator can see what is happening right now, not just what happened last hour.
+
+**Q: Why did you choose an event-driven architecture instead of a simple REST API?**
+
+**A:** Because telemetry is continuous and time-sensitive. An event-driven architecture lets ingestion, processing, and storage remain loosely coupled. Kafka buffers the stream, so even if one downstream consumer slows down, the ingestion service can keep accepting data without losing it.
+
+**Q: What problem does Axion solve?**
+
+**A:** It helps fleet operators understand battery health, thermal behavior, connectivity status, and OTA readiness across many EVs at once. The system turns raw telemetry into decisions.
 
 ---
 
-## 🟢 Backend (Spring Boot, Kafka, Redis)
+## Backend Questions
 
 **Q: What is the role of Kafka in Axion?**
-*   **A**: It acts as the "messaging backbone." It takes data from the ingestion service and provides it to the consumer for processing. It ensures that data is never lost, even if a service restarts.
+
+**A:** Kafka is the event backbone. It separates the intake of telemetry from the processing of telemetry. That means the ingestion layer can stay fast, and consumers can update the digital twin and health state independently.
 
 **Q: Why use Redis if you already have a database?**
-*   **A**: Speed. Our dashboard polls every few seconds. If we queried a traditional SQL database for 250 vehicles that often, it would be a bottleneck. Redis stores the "Live State" in RAM, allowing for sub-millisecond responses.
 
-**Q: How does the Health Score engine work?**
-*   **A**: It's a rule-based engine. It looks at the `TelemetrySnapshot` (Battery SOC, Temp, etc.) and subtracts points based on safety thresholds. Crucially, it returns **Reasons**, making the score "Explainable."
+**A:** Because the dashboard needs current state, not historical query-heavy storage. Redis keeps the live vehicle snapshot in memory, which gives fast reads and supports TTL-based freshness so stale vehicles can naturally age out.
+
+**Q: How does the health score work?**
+
+**A:** It is rule-based. The engine looks at the latest telemetry snapshot and applies deductions based on thresholds such as battery state of charge and temperature. The output is explainable because it includes the reasons behind each deduction.
+
+**Q: What does the digital twin actually store?**
+
+**A:** It stores the vehicle’s latest operational snapshot, including current telemetry values, derived health, and connectivity freshness. It is not a full historical database. It is the live operational mirror of the fleet.
 
 ---
 
-## 🟡 Simulator (Python & asyncio)
+## Simulator Questions
 
 **Q: How do you simulate 250 vehicles without lagging?**
-*   **A**: We use **Python's `asyncio`**. It uses "Cooperative Multitasking." Instead of using heavy OS threads, we use light coroutines. When one vehicle is waiting for the network, the CPU immediately switches to the next vehicle.
 
-**Q: What is "Fault Injection"?**
-*   **A**: It's the ability to intentionally force a vehicle into an "Error State" (like a Battery Drain). This allows us to prove that our Backend and Dashboard actually detect and alert the operator about anomalies.
+**A:** The simulator uses Python `asyncio`. Each vehicle runs as a coroutine, so the program can switch between vehicles whenever one is waiting. That avoids the overhead of one thread per vehicle and keeps the simulation efficient.
 
----
+**Q: What is fault injection?**
 
-## 🔵 Frontend (React & Design)
+**A:** Fault injection is the deliberate creation of abnormal conditions such as battery drain, temperature spikes, or network loss. It is useful because it lets us prove that the backend and UI can detect real operational problems instead of only happy-path telemetry.
 
-**Q: Why use Polling instead of WebSockets?**
-*   **A**: For an academic project of this scale (250 vehicles), polling is more robust and easier to implement/debug. It also handles reconnections automatically. However, our architecture (Kafka) is ready to switch to WebSockets in a future "Production" phase.
+**Q: Why is a simulator necessary at all?**
 
-**Q: What is Glassmorphism and why use it?**
-*   **A**: It's a design trend using transparency and blurred backgrounds. We used it to create a "Premium" look that emphasizes the data cards, making critical KPIs pop against the dark background.
+**A:** Because it makes the entire system testable end to end. Without a simulator, we would only have code. With it, we can show live data flowing through the backend and appearing on the dashboard.
 
 ---
 
-## 🔥 Tricky Questions (Be Careful!)
+## Frontend Questions
 
-**Q: What happens if the Kafka broker goes down?**
-*   **A**: Currently, the ingestion service would fail to publish. In a production system, we would use a "Kafka Cluster" with multiple brokers for high availability.
+**Q: Why use polling instead of WebSockets?**
 
-**Q: Is your system secure? How do you protect vehicle data?**
-*   **A**: In this version (Minor Project), we focused on the **Data Pipeline**. For the Major Project, we have a roadmap to add **JWT Authentication** and **TLS encryption** for MQTT and REST traffic.
+**A:** Polling is simpler and more stable for this project size. The dashboard refreshes every few seconds, which is enough to feel live while keeping the implementation easier to debug. The backend architecture is still compatible with a more real-time push approach in the future.
+
+**Q: What is glassmorphism and why did you use it?**
+
+**A:** Glassmorphism is a visual style that uses transparency, blur, and layered surfaces. I used it because it creates a premium dashboard feel and helps important KPI cards stand out against the dark background.
+
+**Q: Why did you move to route-based navigation?**
+
+**A:** Because real URLs make the application easier to use, easier to debug, and easier to explain. It also allows direct navigation to landing, auth, architecture, and dashboard pages without depending on internal component state.
+
+---
+
+## Tricky Questions
+
+**Q: What happens if Kafka goes down?**
+
+**A:** In the current implementation, ingestion and processing would be impacted because Kafka is the event backbone. In a production version, I would use a Kafka cluster with multiple brokers, better retry handling, and monitoring around producer and consumer health.
+
+**Q: Is the system secure?**
+
+**A:** In this project phase, the focus was on telemetry flow and system behavior rather than full production security. The architecture is ready for stronger security layers such as JWT authentication, HTTPS/TLS, and stronger access control in a major-project phase.
 
 **Q: How would you scale this to 10,000 vehicles?**
-*   **A**: I would:
-    1.  Add more Kafka Partitions.
-    2.  Run multiple instances of the Ingestion Consumer (Horizontal Scaling).
-    3.  Upgrade the Redis instance or use Redis Cluster.
+
+**A:** I would increase Kafka partitions, run more consumer instances, and move Redis to a more scalable deployment such as Redis Cluster. I would also monitor ingestion and dashboard latency separately so scaling is controlled rather than guesswork.
+
+**Q: What is the biggest engineering trade-off in the project?**
+
+**A:** The main trade-off is choosing a simpler polling dashboard and a realistic event-driven backend instead of building a more complex live push architecture. That keeps the project understandable while still demonstrating production-style design.
+
+---
+
+## Short Answer Formula
+If you freeze during the viva, use this structure:
+
+1. State the direct answer.
+2. Give one technical reason.
+3. Tie it back to the project value.
+
+Example: “We use Redis because the dashboard needs fast live state, and Redis gives us in-memory access with TTL support, which keeps the digital twin fresh and the UI responsive.”
