@@ -4,6 +4,22 @@ This section is meant to help you answer questions in a natural, confident way. 
 
 ---
 
+## Quick Definitions
+
+Use these if the examiner asks for a basic explanation before the deeper answer:
+
+- Kafka: a distributed event streaming platform that moves data between services.
+- Redis: an in-memory database/cache used for very fast access to the latest fleet state.
+- MQTT: a lightweight messaging protocol used for telemetry and IoT devices.
+- REST API: an HTTP-based way for systems to exchange data using endpoints like GET and POST.
+- Digital Twin: a live virtual representation of a physical vehicle.
+- TTL: the time after which cached data expires if it is not refreshed.
+- Polling: repeatedly asking the backend for the latest data at fixed intervals.
+
+These one-line definitions are useful when you want to answer simply first and then expand if the examiner asks for more.
+
+---
+
 ## General Architecture
 
 **Q: What is the most unique feature of your project?**

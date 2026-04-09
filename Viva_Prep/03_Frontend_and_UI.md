@@ -20,6 +20,23 @@ In a viva, you can say that the UI style was chosen to emphasize readability and
 
 ---
 
+## Basic Definitions
+
+| Term | Simple Definition |
+|---|---|
+| React | A JavaScript library for building user interfaces from reusable components. |
+| TypeScript | JavaScript with types, used to catch mistakes earlier and make code easier to maintain. |
+| Vite | A fast frontend build tool and development server. |
+| Tailwind CSS | A utility-first CSS framework used to style components quickly. |
+| Motion | A library for adding animation to UI elements. |
+| Route | A URL path such as `/login` or `/dashboard` that displays a specific page. |
+| Polling | Repeatedly asking the backend for the latest data at fixed intervals. |
+| Glassmorphism | A design style that uses blur, transparency, and layered panels. |
+
+These definitions are the short version. You can then explain how they are used in Axion.
+
+---
+
 ## Frontend Technology Stack
 
 ### React 18 + TypeScript

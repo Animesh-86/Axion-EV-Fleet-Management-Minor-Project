@@ -27,6 +27,21 @@ Axion answers those questions by pairing a backend event pipeline with a fast fr
 
 ---
 
+## Basic Definitions
+
+| Term | Simple Definition |
+|---|---|
+| EV | Electric Vehicle, a vehicle powered by electric motors and batteries. |
+| Telemetry | Data sent from a vehicle to the backend, such as battery level or temperature. |
+| Digital Twin | A live virtual copy of a physical vehicle’s current state. |
+| OTA | Over-the-Air; remote software update delivery to a vehicle. |
+| Dashboard | The visual control screen where operators monitor fleet status. |
+| Simulator | Software that generates fake but realistic vehicle behavior for testing. |
+
+These are the core project words that come up most often in the architecture explanation.
+
+---
+
 ## Real-World Analogy
 You can think of Axion like a flight control system for electric vehicles. Instead of waiting for manual reports, the system continuously listens to the fleet, updates each vehicle’s digital twin, and shows a live operational view. That makes the platform much more useful for operational decision-making than a static CRUD application.
 

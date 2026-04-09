@@ -27,6 +27,20 @@ Why this structure is useful:
 - adapters isolate format differences
 - the code remains easier to test and reason about
 
+### Quick File-Structure Definitions
+
+| Term | Simple Definition |
+|---|---|
+| Controller | A class that handles HTTP requests and returns responses. |
+| Service | A class that holds business logic. |
+| Producer | A component that sends events into Kafka. |
+| Consumer | A component that reads events from Kafka. |
+| Adapter | Code that converts one data format into another. |
+| Model | A class that represents a piece of data, such as telemetry or a vehicle state. |
+| Entry point | The file that starts the application or simulator. |
+
+These words are useful because examiners often ask where a piece of logic lives and what its role is.
+
 ### Frontend: `Axion-Frontend`
 The frontend is a route-based React application with a landing page, auth flow, and authenticated dashboard shell.
 

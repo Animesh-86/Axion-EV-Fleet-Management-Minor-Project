@@ -19,6 +19,22 @@ This makes it useful for:
 
 ---
 
+## Basic Definitions
+
+| Term | Simple Definition |
+|---|---|
+| Python | A programming language used here to build the simulator. |
+| asyncio | Python’s asynchronous framework for running many tasks without one thread per task. |
+| YAML | A human-readable configuration format used for the fleet file. |
+| Coroutine | A function that can pause and resume during async execution. |
+| Emitter | The part of the simulator that sends telemetry to the backend. |
+| Fault Injection | Intentionally creating abnormal behavior to test the system. |
+| OTA State Machine | A sequence of update steps a vehicle goes through during a software update. |
+
+These are the simulator terms you are most likely to mention when explaining how the data is generated.
+
+---
+
 ## Technology Choices
 
 ### Python 3.12

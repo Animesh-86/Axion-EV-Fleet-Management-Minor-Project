@@ -6,6 +6,24 @@ The backend is intentionally layered so each concern is isolated. That separatio
 
 ---
 
+## Basic Definitions
+
+If you need a very simple explanation first, use this glossary:
+
+| Term | Simple Definition |
+|---|---|
+| Kafka | A message streaming system that moves events from one service to another reliably. |
+| Redis | An in-memory data store used here to keep the latest vehicle state very fast. |
+| MQTT | A lightweight messaging protocol commonly used for IoT and device telemetry. |
+| REST API | A web API style that uses HTTP requests like GET and POST. |
+| Digital Twin | A live software copy of a physical vehicle’s current state. |
+| TTL | Time To Live; the time before cached data expires automatically. |
+| Canonical Model | One standard internal data format used after normalizing incoming payloads. |
+
+These definitions are intentionally short so you can say them quickly in a viva before going into the deeper architecture explanation.
+
+---
+
 ## Backend Responsibilities
 The backend handles five core responsibilities:
 
