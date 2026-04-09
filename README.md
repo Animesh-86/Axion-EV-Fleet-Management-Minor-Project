@@ -2,7 +2,7 @@
   <img src="Design/Dashboard.png" alt="Axion Dashboard" width="100%"/>
 </p>
 
-<h1 align="center">⚡ Axion — EV Fleet Management Platform</h1>
+<h1 align="center">Axion — EV Fleet Management Platform</h1>
 
 <p align="center">
   <b>Vendor-Neutral EV Fleet Telemetry · Digital Twin · OTA Orchestration</b><br/>
@@ -21,7 +21,7 @@
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 git clone https://github.com/Animesh-86/Axion-EV-Fleet-Management.git
@@ -33,17 +33,17 @@ Open **http://localhost** — 250 simulated EVs streaming live telemetry.
 
 ---
 
-## 📖 Overview
+## Overview
 
 Axion is a **backend-first, event-driven platform** that ingests, normalizes, and processes electric vehicle telemetry at scale. It maintains a **real-time digital twin** for each vehicle, computes **explainable health scores**, and orchestrates **OTA update simulations** across a fleet of 250 vehicles.
 
 The system tolerates unreliable connectivity, heterogeneous vendor data formats, and high-throughput telemetry streams — providing operators with actionable fleet insights through a premium dark-themed dashboard.
 
-> 🎓 Academic project with industry-aligned architecture — emphasizing correctness, scalability, and explainability.
+> Academic project with industry-aligned architecture — emphasizing correctness, scalability, and explainability.
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -84,43 +84,43 @@ The system tolerates unreliable connectivity, heterogeneous vendor data formats,
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-### 🔌 Dual-Protocol Telemetry Ingestion
+### Dual-Protocol Telemetry Ingestion
 - REST (HTTP POST) and MQTT ingestion
 - Adapter pattern normalizes vendor data into canonical `CanonicalTelemetryEnvelope`
 - Strict validation with graceful error handling
 - Throughput tracking (events/second)
 
-### 📡 Real-Time Event Pipeline
+### Real-Time Event Pipeline
 - Apache Kafka as central event backbone
 - Topic isolation: `telemetry.normal`, `ota.events`
 - Fault-tolerant, replayable event processing
 
-### 🪞 Digital Twin Engine
+### Digital Twin Engine
 - One authoritative twin per vehicle in Redis
 - Stores: telemetry snapshot, health score, connectivity state
 - Stale-data protection via timestamp ordering
 - Automatic 120s TTL expiry
 
-### 💚 Explainable Health Scoring (0–100)
+### Explainable Health Scoring (0–100)
 - Rule-based scoring with configurable thresholds
 - **HEALTHY** (≥80) · **DEGRADED** (50–79) · **CRITICAL** (<50)
 - Factors: Battery SOC, battery temperature, connectivity
 - Human-readable explanations for every deduction
 
-### 🔄 OTA Update Simulation
+### OTA Update Simulation
 - Health-gated: refuses if battery low or temp high
 - State machine: `PENDING → IN_PROGRESS → SUCCESS / FAILURE`
 - Canary-style rollout with automatic rollback
 - Campaign tracking via Kafka events
 
-### 📊 Premium Dashboard
+### Premium Dashboard
 - Dark-themed React 18 dashboard with glassmorphism effects
 - 6 animated KPI cards, health distribution charts
 - 7+ pages: Dashboard, Fleet, Vehicle Detail, OTA Manager, Analytics, Alerts, System Health
 
-### 🐍 250-Vehicle Simulator
+### 250-Vehicle Simulator
 - Python asyncio driving 250 concurrent EVs
 - Vehicle profiles: sedan, truck, sport
 - 5 fault-injection scenarios: normal drive, battery drain, temp spike, network dropout, OTA trigger
@@ -128,7 +128,7 @@ The system tolerates unreliable connectivity, heterogeneous vendor data formats,
 
 ---
 
-## 🖼️ Screenshots
+## Screenshots
 
 <details>
 <summary><b>Fleet Dashboard</b> — Real-time monitoring with KPI cards & health distribution</summary>
@@ -172,7 +172,7 @@ The system tolerates unreliable connectivity, heterogeneous vendor data formats,
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -187,7 +187,7 @@ The system tolerates unreliable connectivity, heterogeneous vendor data formats,
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Axion-EV-Fleet-Management/
@@ -226,7 +226,7 @@ Axion-EV-Fleet-Management/
 
 ---
 
-## 🐳 Deployment
+## Deployment
 
 ### Docker Compose (One Command)
 
@@ -264,7 +264,7 @@ cd Axion-Simulator && python main.py
 
 ---
 
-## 📡 API Reference
+## API Reference
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -276,7 +276,7 @@ cd Axion-Simulator && python main.py
 
 ---
 
-## 🗺️ Roadmap (Major Project — 7th Semester)
+## Roadmap (Major Project — 7th Semester)
 
 | Phase | Feature | Timeline |
 |-------|---------|----------|
@@ -293,7 +293,7 @@ See [MAJOR_PROJECT_PLAN.md](Project%20Docs/MAJOR_PROJECT_PLAN.md) for full detai
 
 ---
 
-## 👥 Team
+## Team
 
 | Member | Role |
 |--------|------|
@@ -302,10 +302,10 @@ See [MAJOR_PROJECT_PLAN.md](Project%20Docs/MAJOR_PROJECT_PLAN.md) for full detai
 
 ---
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 Axion simulates OTA updates and vehicle behavior for academic and demonstration purposes only. It does not perform real firmware updates on physical vehicles.
 
-## 📄 License
+## License
 
 This project is developed for academic use. Licensing terms can be defined as required.
