@@ -60,7 +60,15 @@ export class AxionApi {
   static async getVehicle(vehicleId: string): Promise<VehicleDetail> {
     const res = await fetch(`${BASE_URL}/api/v1/fleet/${vehicleId}`);
     if (!res.ok) throw new Error('Failed to fetch vehicle');
-    return res.json();
+    const data = await res.json();
+
+    // Backend returns telemetry as a nested snapshot; normalize for UI cards
+    // that read top-level battery/temperature fields.
+    return {
+      ...data,
+      battery: data?.battery ?? data?.telemetry?.batterySocPct ?? 0,
+      temperature: data?.temperature ?? data?.telemetry?.batteryTempC ?? 0,
+    };
   }
 
   static async triggerOTA(campaignId: string, vehicleId: string) {
